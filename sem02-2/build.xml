@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="sem02-2" default="default" basedir=".">
+    <description>Builds, tests, and runs the project sem02-2.</description>
+    <import file="nbproject/build-impl.xml" optional="true"/>
+    <target name="default" depends="compile"/>
+    <target name="compile">
+        <mkdir dir="build/classes"/>
+        <javac srcdir="src" destdir="build/classes" includeantruntime="false"/>
+    </target>
+    <target name="run" depends="compile">
+        <java classname="Main" classpath="build/classes"/>
+    </target>
+    <target name="clean">
+        <delete dir="build"/>
+    </target>
+</project>

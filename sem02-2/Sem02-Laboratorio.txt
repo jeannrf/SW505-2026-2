@@ -1,0 +1,25 @@
+Laboratorio:
+Implementar el código necesario para gestionar un pequeño
+sistema académico, que debe contener Alumno, Curso, Matrícula,
+Docente y otras clases que sean necesarias, considerando
+la abstracción, modularidad y encapsulación correctamente.
+Subir a su GitHub, el folder del curso debe llamarse SW505-2026-2,
+el folder de la sesión "sem02-2"
+
+// Encapsulación
+class Alumno {
+    private int código;
+    private nombres;
+    ...
+    int ciclo_relativo;
+    int estado; // estudiante regular, egresado, bachiller, suspendido, ...
+};
+
+class Curso {
+};
+
+class Matricula {
+    int cod_matricula;
+    Alumno alumno;
+    Curso cursos[];
+}

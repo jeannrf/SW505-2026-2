@@ -1,0 +1,12 @@
+# Build and class files
+build/
+bin/
+*.class
+*.jar
+
+# NetBeans private files
+nbproject/private/
+
+# IDE files & OS metadata
+.DS_Store
+Thumbs.db
