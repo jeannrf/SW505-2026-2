@@ -2,7 +2,7 @@
 
 Proyecto de NetBeans / Java para la gestión de un pequeño sistema académico, implementando **Abstracción**, **Modularidad** y **Encapsulamiento**.
 
-## 📁 Estructura del Proyecto
+## Estructura del Proyecto
 
 ```text
 SW505-2026-2/
@@ -23,7 +23,7 @@ SW505-2026-2/
     └── README.md
 ```
 
-## 🚀 Compilación y Ejecución
+## Compilación y Ejecución
 
 ### Opción 1: Desde NetBeans
 Abrir el folder `sem02-2` como proyecto en Apache NetBeans y presionar **Run (F6)**.
