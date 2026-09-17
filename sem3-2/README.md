@@ -16,4 +16,3 @@ src/
     └── resources/
         └── application.properties # Valores de entorno y tasas promocionales externalizadas
 ```
-
