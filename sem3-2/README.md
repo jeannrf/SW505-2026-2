@@ -9,4 +9,3 @@ Proyecto modular para el procesamiento desacoplado de pedidos aplicando anticipa
 - `pe.empresa.pedidos.impuesto`: Cálculo de impuestos por región mediante el patrón Strategy (`CalculadoraImpuesto`).
 - `pe.empresa.pedidos.config`: Carga tipada de propiedades externas (`Configuracion`) desde `resources/application.properties`.
 
-> *"La buena construcción no es escribir código rápido; es escribir código que sobreviva al cambio."* — Steve McConnell (2004)
