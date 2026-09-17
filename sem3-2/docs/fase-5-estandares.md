@@ -1,57 +1,51 @@
 # Fase 5: Estándares de Codificación — Auditoría y Limpieza
 
-## 1. Auditoría y Cambios Aplicados por Archivo
+## Cambios aplicados en el código del proyecto
 
-Se realizó una auditoría completa del código desarrollado en las Fases 1 a 4 aplicando los 4 ejes de estándares (McConnell, 2004 — Cap. 11): **nomenclatura, formato, comentarios y organización**.
+Siguiendo las pautas de McConnell (2004, Cap. 11), auditamos los módulos construidos en las fases previas para asegurar consistencia en nomenclatura, legibilidad y eliminación de números mágicos.
 
-### Cambios Concretos en Clases de Dominio (Eliminación de Números Mágicos)
+### Reemplazo de factores numéricos en estrategias de descuento
+En las estrategias concretas, los porcentajes de descuento estaban expresados como literales directos dentro del cálculo. Los reemplazamos por constantes estáticas con nombres descriptivos y buscables:
 
-| Archivo | Antes (Número Mágico) | Después (Constante Buscable) |
-| :--- | :--- | :--- |
-| `DescuentoVip.java` | `return subtotal * 0.85;` | `private static final double FACTOR_DESCUENTO_VIP = 0.85;`<br>`return subtotal * FACTOR_DESCUENTO_VIP;` |
-| `DescuentoNavidad.java` | `return subtotal * 0.80;` | `private static final double FACTOR_DESCUENTO_NAVIDAD = 0.80;`<br>`return subtotal * FACTOR_DESCUENTO_NAVIDAD;` |
-| `DescuentoBlackFriday.java` | `return subtotal * 0.70;` | `private static final double FACTOR_DESCUENTO_BLACK_FRIDAY = 0.70;`<br>`return subtotal * FACTOR_DESCUENTO_BLACK_FRIDAY;` |
+En `DescuentoVip.java`, la línea original `return subtotal * 0.85;` pasó a definir primero `private static final double FACTOR_DESCUENTO_VIP = 0.85;` y operar como `return subtotal * FACTOR_DESCUENTO_VIP;`.
 
-### Verificación de Nomenclatura en la Arquitectura
-* **Clases como sustantivos:** `Pedido`, `Configuracion`, `Cobrador`, `PagoTarjeta`, `DescuentoVip`.
-* **Métodos como verbos/acciones:** `procesar()`, `aplicar()`, `cobrar()`, `getUrlPagos()`, `getUmbralVip()`.
-* **Intención explícita:** Parámetros como `subtotal`, `monto`, `metodoPago` y `estrategia` reemplazan nombres genéricos o abreviaturas crípticas.
-* **Comentarios limpios:** Se eliminaron comentarios redundantes que describían "el qué" obvio, conservando únicamente explicaciones de decisiones arquitectónicas ("el porqué", como la inyección por constructor).
+En `DescuentoNavidad.java`, sustituimos `return subtotal * 0.80;` por la constante `FACTOR_DESCUENTO_NAVIDAD = 0.80`.
 
----
+En `DescuentoBlackFriday.java`, convertimos el cálculo `return subtotal * 0.70;` en `return subtotal * FACTOR_DESCUENTO_BLACK_FRIDAY = 0.70;`.
 
-## 2. Declaración de Violaciones en `PedidoRigido.java` (Referencia Histórica)
+### Verificación de nombres y comentarios en el resto de paquetes
+Comprobamos que las clases representen sustantivos claros (`Pedido`, `Configuracion`, `Cobrador`, `PagoTarjeta`) y los métodos utilicen verbos que revelen su intención (`procesar`, `aplicar`, `cobrar`, `getUrlPagos`). 
 
-`PedidoRigido.java` se conserva intencionalmente intacto como evidencia del "código que duele" de la Fase 1. En su análisis se registran las siguientes violaciones a los estándares:
-
-1. **Números mágicos incrustados:** Presencia directa de `0.85` y `0.80` sin nombres simbólicos.
-2. **Cadenas mágicas (*Magic Strings*):** Comparaciones literales con `"regular"`, `"vip"`, `"navidad"`, `"tarjeta"`, `"yape"`, `"efectivo"`.
-3. **Comentarios redundantes:** Comentarios como `// sin descuento` que redundan sobre un bloque vacío.
-4. **Múltiples responsabilidades acopladas:** Violación de organización modular al mezclar lógica de pedido, reglas financieras y protocolos de pago en un solo método.
+Asimismo, depuramos los comentarios redundantes: eliminamos notas que solo repetían lo que el código ya expresaba de forma evidente, conservando únicamente explicaciones de arquitectura cuando resultaba indispensable (como la justificación de la inyección de dependencias en `Pedido.java`).
 
 ---
 
-## 3. Reflexión: Formato Automático vs. Discusión de Diseño
+## Violaciones intencionales detectadas en `PedidoRigido.java`
 
-> **¿Por qué delegar el formato a una herramienta automática libera energía para discutir diseño?**
+Por diseño pedagógico del laboratorio, la clase `PedidoRigido.java` se mantuvo sin modificaciones como testigo de la Fase 1. En ella encontramos varias violaciones claras a los estándares:
 
-Cuando un equipo adopta un formateador automático (como `google-java-format` o `Prettier`):
-* **Eliminación del *Bikeshedding*:** Se evitan debates improductivos en las revisiones de código (*Code Reviews*) sobre espacios, tabulaciones, saltos de línea o posición de llaves.
-* **Foco en valor arquitectónico:** La energía mental de los desarrolladores y revisores se redirige por completo a lo esencial: cohesión, acoplamiento, cumplimiento de principios SOLID, aislamiento de puntos de variación y diseño de contratos/APIs.
-* **Consistencia objetiva:** El estilo deja de ser una opinión individual y pasa a ser una regla automatizada e incuestionable del pipeline de CI/CD.
+Presenta números mágicos sin nombrar (`0.85` y `0.80`), cadenas mágicas duplicadas (`"vip"`, `"navidad"`, `"tarjeta"`, etc.), comentarios que describen lo obvio como `// sin descuento` en ramas vacías, y un método sobrecargado de responsabilidades que mezcla lógica de cálculo con selección de medios de pago.
 
 ---
 
-## 4. Comandos de Referencia de Herramientas de Calidad
+## Reflexión: automatizar el formato para enfocarse en el diseño
 
-Para ejecutar formateo y análisis estático automatizado en el entorno local o pipeline de integración continua:
+Debatir sobre tabulaciones, espacios alrededor de operadores o la posición de las llaves en una revisión de código (*Code Review*) suele consumir tiempo y generar discusiones estériles (*bikeshedding*). Cuando el equipo delega esas decisiones a herramientas automatizadas de formateo, se logra un beneficio doble:
+
+Por un lado, el estilo se vuelve uniforme de manera instantánea y mecánica, eliminando preferencias personales. Por otro lado, y más importante aún, la energía mental de los desarrolladores y revisores se redirige a lo que realmente impacta en la calidad del software: evaluar la cohesión de las clases, verificar si los puntos de variación están bien aislados, discutir la testabilidad de los componentes y comprobar el cumplimiento de los principios SOLID.
+
+---
+
+## Herramientas de calidad automatizada (referencia de comandos)
+
+Para integrar este proceso dentro del ciclo de desarrollo o en un pipeline de integración continua, se pueden utilizar las siguientes herramientas:
 
 ```bash
-# Formateo automático de código con Google Java Format
+# Formatear automáticamente el código con el estándar de Google
 java -jar google-java-format.jar --replace src/main/java/pe/empresa/pedidos/**/*.java
 
-# Verificación de cumplimiento de estándares con Checkstyle
+# Ejecutar análisis estático para validar reglas de estilo y buenas prácticas
 java -jar checkstyle.jar -c google_checks.xml src/main/java/
 ```
 
-*(Nota: Comandos documentados de forma referencial, pendientes de ejecución en el entorno local del estudiante según disponibilidad de binarios).*
+*(Comandos referenciales documentados para su ejecución según los binarios y configuración disponible en el entorno del estudiante).*

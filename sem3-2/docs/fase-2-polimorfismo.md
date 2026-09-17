@@ -1,33 +1,31 @@
 # Fase 2: Refactor a Polimorfismo — Aislamiento del Cambio
 
-## 1. Métrica de Impacto ante la Extensión (Caso: `PagoPlin`)
+## Impacto real al extender el sistema: el caso de Plin
 
-Al incorporar un nuevo método de pago (**Plin**):
+El ejercicio práctico de incorporar `PagoPlin` como nuevo medio de cobro arroja una métrica contundente:
 
-* **Archivos nuevos creados:** `1` (`PagoPlin.java`)
-* **Archivos existentes modificados:** `0` (Ni `MetodoPago.java`, ni `PagoTarjeta.java`, ni `PagoYape.java`, ni `PagoEfectivo.java`, ni `Cobrador.java`, ni `PedidoRigido.java`).
+- **Archivos nuevos creados:** 1 (`PagoPlin.java`).
+- **Archivos existentes modificados:** 0. Ni la interfaz `MetodoPago`, ni las clases previas (`PagoTarjeta`, `PagoYape`, `PagoEfectivo`), ni el orquestador `Cobrador` necesitaron un solo ajuste.
+
+Este resultado contrasta directamente con el modelo inicial de `PedidoRigido`, donde soportar un medio adicional requería abrir la clase, localizar el bloque condicional e intercalar otra rama `else if`.
 
 ---
 
-## 2. Demostración del "Aislamiento del Cambio" vs. `PedidoRigido`
+## Por qué esto demuestra un verdadero aislamiento del cambio
 
-### Enfoque Rígido (`PedidoRigido` con `if / else`)
-* **Alto acoplamiento:** Para soportar un nuevo medio de pago era obligatorio abrir el archivo `PedidoRigido.java`, modificar el método `calcularTotal` e intercalar un nuevo bloque condicional `else if (metodoPago.equals("plin"))`.
-* **Riesgo de regresión:** Tocar código en producción aumentaba la probabilidad de romper los flujos existentes (efectivo, tarjeta, etc.) y obligaba a recompilar y re-probar toda la clase central de pedidos.
-* **Violación de OCP:** La clase no estaba cerrada a la modificación ni abierta a la extensión.
+En el diseño rígido con condicionales sobre strings, cualquier cambio en los medios de pago ponía en riesgo el funcionamiento del pedido entero. Había un acoplamiento directo entre la orden y cada implementación concreta de pago. Si alguien cometía un error de sintaxis o alteraba sin querer otra rama del `if`, rompía flujos consolidados como tarjeta o efectivo.
 
-### Enfoque Polimórfico (`MetodoPago` + Polimorfismo)
-* **Principio Abierto/Cerrado (OCP):** El sistema está **abierto a la extensión** (basta con crear una nueva clase que implemente el contrato `MetodoPago`) y **cerrado a la modificación** (las clases existentes no sufren ningún cambio).
-* **Aislamiento del cambio (*blast radius = 0*):** La variación queda contenida exclusivamente en su propio archivo (`PagoPlin.java`). El componente consumidor (`Cobrador` u orquestador) interactúa únicamente con la abstracción `MetodoPago` sin conocer los detalles de implementación de cada pasarela.
-* **Costo predecible:** El costo de añadir $N$ métodos de pago escala linealmente en nuevos archivos independientes, sin degradar ni complejizar el código base existente.
+Al aplicar polimorfismo mediante la interfaz `MetodoPago`, logramos cumplir el Principio Abierto/Cerrado (OCP): el sistema queda abierto para recibir nuevas formas de pago mediante nuevas clases, pero cerrado a la modificación de las que ya están probadas y funcionando.
+
+La clase consumidora (sea `Cobrador` o más adelante `Pedido`) solo conoce el contrato general: sabe que cualquier `MetodoPago` tiene un método `procesar(monto)`. No necesita saber si el cobro se hace con código QR, pasarela bancaria o dinero en mano. El radio de impacto ante nuevas implementaciones se reduce exactamente a cero sobre el código preexistente.
 
 > *"Agregar un nuevo método de pago costó 1 archivo nuevo, 0 archivos modificados. Ese es el ahorro del aislamiento."*
 
 ---
 
-## 3. Equivalente Conceptual en Python (`abc`)
+## Equivalente conceptual en Python
 
-A modo ilustrativo, el equivalente conceptual en Python utiliza una clase base abstracta (`ABC`) y el decorador `@abstractmethod`:
+Para ilustrar este mismo patrón en Python, se recurre al módulo estándar `abc` para definir una clase base abstracta que actúe como interfaz:
 
 ```python
 from abc import ABC, abstractmethod
@@ -35,13 +33,13 @@ from abc import ABC, abstractmethod
 class MetodoPago(ABC):
     @abstractmethod
     def procesar(self, monto: float) -> None:
-        """Procesa el cobro por el monto especificado."""
-        ...
+        """Contrato abstracto para ejecutar el cobro."""
+        pass
 
     @abstractmethod
     def nombre(self) -> str:
-        """Retorna el nombre descriptivo del método de pago."""
-        ...
+        """Nombre descriptivo del medio de pago."""
+        pass
 
 class PagoYape(MetodoPago):
     def procesar(self, monto: float) -> None:
@@ -57,3 +55,5 @@ class PagoPlin(MetodoPago):
     def nombre(self) -> str:
         return "Plin"
 ```
+
+El principio se mantiene idéntico: el código cliente interactúa con la abstracción `MetodoPago` sin acoplarse a si se trata de Yape, Plin o una futura billetera digital.

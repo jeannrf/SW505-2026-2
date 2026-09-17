@@ -1,25 +1,28 @@
 # Fase 6b: Reto Integrador — Cálculo de Impuestos por Región
 
-## 1. Justificación del Patrón Strategy para Impuestos
+## Por qué modelar los impuestos con el patrón Strategy
 
-El cálculo impositivo por región se modela bajo el patrón **Strategy** y no simplemente como un polimorfismo básico por los siguientes motivos:
+A diferencia de un polimorfismo básico pensado para seleccionar un dispositivo o canal de salida, el cálculo tributario por región encaja directamente en la definición del patrón **Strategy**:
 
-* **Encapsulamiento de algoritmos fiscales completos:** Cada región no solo difiere en una tasa porcentual, sino potencialmente en la fórmula de cálculo (exenciones tributarias, regímenes especiales de frontera o Amazonía, impuestos adicionales como IPM o ISC).
-* **El objeto completo representa una regla algorítmica:** La interfaz `CalculadoraImpuesto` define la firma para ejecutar el cálculo sobre la base imponible (`calcular(montoBase)`), permitiendo al contexto (`Pedido`) variar su lógica de liquidación fiscal en tiempo de ejecución sin acoplarse a normativas geográficas.
-* **Cohesión y orden de cálculo en el dominio:** En `Pedido.java`, se aplica primero la estrategia de descuento sobre el subtotal bruto y, sobre el subtotal resultante (base imponible), se calcula el impuesto antes de consolidar el total final a cobrar.
+Las leyes fiscales raramente se reducen a multiplicar por un número fijo. En un escenario tributario real, cada región o régimen puede implicar reglas algorítmicas completas, como montos inafectos, exoneraciones temporales, topes de facturación o impuestos combinados (como IGV más impuestos municipales).
 
----
-
-## 2. Impacto ante una Nueva Región Tributaria
-
-Si la entidad reguladora o el negocio expande operaciones a una nueva región con una tasa impositiva particular (ej. Cusco con régimen especial):
-
-* **Archivos nuevos creados:** `1` (`ImpuestoCusco.java` implementando `CalculadoraImpuesto`).
-* **Archivos existentes modificados:** `0` (`Pedido.java`, `CalculadoraImpuesto.java` y las clases `ImpuestoLima`, `ImpuestoArequipa`, `ImpuestoSelva` permanecen intactas).
+Al crear la interfaz `CalculadoraImpuesto`, cada clase concreta (`ImpuestoLima`, `ImpuestoArequipa`, `ImpuestoSelva`) encapsula un algoritmo impositivo completo e intercambiable. La clase `Pedido` no asume cómo se liquida el tributo; únicamente recibe el monto imponible (el subtotal ya rebajado con el descuento), delega el cálculo llamando a `calcular(montoBase)` y suma el impuesto resultante para obtener el total final a cobrar.
 
 ---
 
-## 3. Externalización de Tasas Promocionales en `application.properties`
+## Impacto ante una nueva región o normativa impositiva
 
-* La tasa de la Selva (`impuesto.selva.porcentaje=0.10`) se externalizó en `application.properties` y se expone a través de `Configuracion.java`.
-* **Beneficio ante cambios normativos:** Si el gobierno modifica temporalmente la tasa promocional de la Selva (por ejemplo, del 10% al 8%), la actualización se realiza en el archivo de configuración o mediante variables de entorno del servidor. No se requiere editar código fuente, recompilar el proyecto ni generar un nuevo despliegue de artefactos.
+Si la administración tributaria crea una zona franca o una nueva tasa regional (por ejemplo, un régimen especial para Cusco):
+
+- Se requiere crear un solo archivo nuevo: `ImpuestoCusco.java`, implementando `CalculadoraImpuesto`.
+- Cero archivos existentes modificados: ni `Pedido.java`, ni las demás calculadoras de impuestos, ni las interfaces sufren cambios.
+
+El costo de adaptación sigue siendo predecible y no existe riesgo de alterar los cálculos tributarios de Lima o Arequipa por tocar una clase compartida.
+
+---
+
+## Ventajas de externalizar la tasa promocional en `application.properties`
+
+En el caso de la Selva, la tasa del 10% se considera promocional y está sujeta a revisiones periódicas por parte de las autoridades comerciales. Para evitar acoplar esa cifra al código fuente, la definimos en `application.properties` bajo la propiedad `impuesto.selva.porcentaje=0.10` y la leemos a través de `Configuracion.java`.
+
+Esto permite que, si el beneficio fiscal se modifica temporalmente (por ejemplo, si baja al 8% o sube al 12%), el cambio se aplique directamente en el archivo de propiedades del servidor o mediante variables de entorno en el contenedor de despliegue. No hace falta abrir el proyecto, editar archivos Java, compilar ni generar un nuevo empaquetado para que el sistema empiece a cobrar con la nueva tasa.

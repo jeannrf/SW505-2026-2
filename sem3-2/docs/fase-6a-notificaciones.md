@@ -1,28 +1,28 @@
 # Fase 6a: Reto Integrador — Notificaciones Polimórficas
 
-## 1. Justificación del Polimorfismo vs. `if/else` en Notificaciones
+## Por qué resolver las notificaciones con polimorfismo y no con `if/else`
 
-El punto de variación de notificaciones se resolvió mediante **polimorfismo e inversión de dependencias** debido a:
+Cuando el sistema necesita enviar confirmaciones por distintos canales (correo electrónico, SMS o WhatsApp), recurrir a una estructura condicional sobre cadenas dentro de `Pedido` habría repetido los mismos vicios que sufrimos en la Fase 1.
 
-* **Principio de Responsabilidad Única (SRP):** `Pedido` solo debe preocuparse por coordinar el ciclo de vida del pedido, no por conocer los detalles técnicos, APIs o protocolos de envío (SMTP para correo, gateway SMS o API de Meta para WhatsApp).
-* **Principio Abierto/Cerrado (OCP):** Con un enfoque `if/else`, agregar un canal implicaría abrir y modificar `Pedido.java`, introduciendo dependencias directas y riesgo de regresión en el flujo de ventas. Con polimorfismo, el sistema está abierto a nuevos canales sin tocar la lógica existente.
-* **Aislamiento de fallos y dependencias externas:** Cada canal (`NotificadorEmail`, `NotificadorSms`, `NotificadorWhatsapp`) gestiona sus propias dependencias y librerías sin contaminar el dominio central.
+Cada canal de comunicación tiene requerimientos técnicos muy distintos: el correo suele requerir protocolos SMTP o clientes HTTP especializados, el SMS interactúa con módems o APIs de mensajería (como Twilio), y WhatsApp depende de servicios como la Cloud API de Meta. Si resolviéramos esto con `if/else` dentro de `Pedido`, obligaríamos a la clase de pedidos a importar librerías de red, gestionar tokens y conocer detalles de transporte que nada tienen que ver con su responsabilidad.
 
----
-
-## 2. Decisión de Diseño en `Pedido.java`
-
-* Se inyectó `Notificador` en el constructor de `Pedido` junto con `EstrategiaDescuento` y `MetodoPago`.
-* En el método `procesar(double subtotal)`, tras calcular el total con descuento y ejecutar el cobro, se dispara la notificación de confirmación (`notificador.notificar("cliente@empresa.pe", "Pedido confirmado por un total de S/ " + total)`).
-* El destinatario de ejemplo simula el correo/teléfono del cliente titular de la orden, desacoplando completamente a `Pedido` del canal real empleado.
+Al definir la interfaz `Notificador`, convertimos este punto de variación en un contrato polimórfico. Cada implementación (`NotificadorEmail`, `NotificadorSms`, `NotificadorWhatsapp`) encapsula su propia lógica y dependencias. `Pedido` únicamente sabe que puede invocar `notificar(destinatario, mensaje)` sin preocuparse por la tecnología que esté por detrás.
 
 ---
 
-## 3. Impacto ante la Extensión: Caso "Notificación Push"
+## Decisión de diseño al integrar el colaborador en `Pedido`
 
-Si el negocio solicita habilitar **Notificaciones Push** (por ejemplo, vía Firebase Cloud Messaging):
+En `Pedido.java` incorporamos `Notificador` como tercer colaborador inyectado a través del constructor. Dentro del método `procesar(subtotal)`, una vez aplicado el descuento y ejecutado el cobro, llamamos a `notificador.notificar("cliente@empresa.pe", ...)`.
 
-* **Archivos nuevos creados:** `1` (`NotificadorPush.java` implementando el contrato `Notificador`).
-* **Archivos existentes modificados:** `0` (La interfaz `Notificador`, la clase de negocio `Pedido`, y los notificadores existentes `Email`, `SMS`, `WhatsApp` permanecen 100% inalterados).
+Decidimos colocar un destinatario representativo en este método para mantener la firma `procesar(double subtotal)` compatible con las fases anteriores del laboratorio, demostrando que el pedido delega el aviso de confirmación inmediatamente después de asegurar el cobro.
 
-> *El cambio se limita exclusivamente a crear la nueva clase y pasarla por inyección en el punto de composición (`Main`), manteniendo el blast radius en 0.*
+---
+
+## Qué implicaría agregar "Notificaciones Push" en el futuro
+
+Si el negocio decide lanzar una aplicación móvil y requiere enviar notificaciones Push (por ejemplo mediante Firebase Cloud Messaging), el impacto en el código es mínimo y perfectamente predecible:
+
+- Se crea un único archivo nuevo: `NotificadorPush.java`, implementando la interfaz `Notificador`.
+- No se modifica ningún archivo existente: ni la interfaz `Notificador`, ni `Pedido.java`, ni las clases de correo, SMS o WhatsApp sufren alteraciones.
+
+La única modificación se dará en la capa de composición (`Main.java` o el punto de inicio de la app), donde simplemente pasaremos `new NotificadorPush()` al instanciar el pedido. Esto confirma que el principio Abierto/Cerrado se mantiene firme.
