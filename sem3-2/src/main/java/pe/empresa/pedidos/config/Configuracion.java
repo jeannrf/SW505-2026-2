@@ -30,4 +30,8 @@ public class Configuracion {
     public int getTimeoutSegundos() {
         return Integer.parseInt(props.getProperty("pagos.timeout.segundos"));
     }
+
+    public double getImpuestoSelvaPorcentaje() {
+        return Double.parseDouble(props.getProperty("impuesto.selva.porcentaje", "0.10"));
+    }
 }
