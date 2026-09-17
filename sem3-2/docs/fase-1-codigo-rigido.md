@@ -1,6 +1,6 @@
 # Fase 1: El Código que Duele — Análisis de Rigidez y Puntos de Variación
 
-Respuestas al cuestionario guía sobre la clase `PedidoRigido.java`:
+Respuestas al cuestionario guía sobre la clase `PedidoRigido.java`, identificando los problemas de diseño y planteando las soluciones arquitectónicas adecuadas.
 
 ---
 
@@ -8,42 +8,52 @@ Respuestas al cuestionario guía sobre la clase `PedidoRigido.java`:
 
 En la clase existen **dos puntos de variación principales**:
 
-1. **La regla de cálculo de descuentos:** la lógica condicional que evalúa si el cliente es regular, VIP o de campaña navideña para decidir qué porcentaje rebajar (`0.85`, `0.80` o ninguno).
-2. **El mecanismo de procesamiento del cobro:** el bloque condicional que inspecciona la cadena de texto (`tarjeta`, `yape`, `efectivo`) para ejecutar la acción de pago correspondiente.
+1. **La regla de cálculo de descuentos:** la lógica condicional que decide qué porcentaje rebajar según el cliente o la temporada (`"regular"`, `"vip"`, `"navidad"`).
+2. **El mecanismo de procesamiento del cobro:** el bloque condicional que ejecuta la acción de pago según el canal elegido (`"tarjeta"`, `"yape"`, `"efectivo"`).
 
-Adicionalmente, existen variaciones secundarias acopladas al código, como el uso de factores numéricos fijos (*números mágicos*) y cadenas literales (*magic strings*), que representan valores susceptibles de cambio pero sin nombres que expliquen su intención.
+Adicionalmente, existen variaciones secundarias acopladas: el uso de números mágicos (`0.85`, `0.80`) y cadenas literales fijas (*magic strings*).
+
+* **Solución arquitectónica:** Separar ambos ejes en contratos independientes (interfaces). `Pedido` no debe contener la lógica de cómo se descuenta ni de cómo se cobra, sino únicamente coordinar la ejecución delegando cada tarea a componentes especializados.
 
 ---
 
 ### 2. ¿Qué pasa si el negocio agrega "descuento por Black Friday"?
 
-Nos vemos forzados a modificar directamente el código fuente de `PedidoRigido`, insertando una nueva rama condicional `else if (tipoCliente.equals("blackfriday"))`.
+* **El problema:** Estamos obligados a abrir `PedidoRigido.java` e intercalar un nuevo `else if (tipoCliente.equals("blackfriday"))`. Esto viola el Principio Abierto/Cerrado (OCP) y genera riesgo de regresión: tocar una clase central en producción para una campaña comercial temporal puede alterar por error los descuentos existentes de clientes regulares o VIP.
 
-Esto viola el Principio Abierto/Cerrado (OCP), ya que la clase no está cerrada a la modificación para admitir nuevas promociones. Además, genera un riesgo innecesario de regresión: abrir y alterar una clase crítica para una campaña comercial temporal puede introducir errores accidentales en los cálculos de clientes regulares o VIP, obligando a re-probar y redesplegar todo el flujo de pedidos.
+* **Solución propuesta — Patrón Strategy (Estrategia):**
+  - *¿En qué consiste?* En lugar de tener condicionales con fórmulas matemáticas, creamos una interfaz común llamada `EstrategiaDescuento` con un método `aplicar(subtotal)`. Cada tipo de descuento (`DescuentoVip`, `DescuentoNavidad`, `DescuentoBlackFriday`) se convierte en una clase independiente.
+  - *¿Por qué lo usamos?* Porque convierte cada algoritmo de cálculo en una pieza intercambiable. Cuando llegue Black Friday, simplemente creamos un archivo nuevo `DescuentoBlackFriday.java`. La clase `Pedido` no se modifica en lo absoluto; solo recibe la nueva estrategia desde fuera.
 
 ---
 
 ### 3. ¿Qué pasa si se agrega "Plin" como método de pago?
 
-Se evidencia una violación directa del Principio de Responsabilidad Única (SRP): la clase `PedidoRigido` no solo calcula el total de la venta, sino que asume la responsabilidad de saber cómo se procesa cada medio de pago.
+* **El problema:** Se viola el Principio de Responsabilidad Única (SRP), porque la clase de pedidos mezcla el cálculo financiero con los protocolos de cobro. Agregar Plin exige otro `else if (metodoPago.equals("plin"))`. Si en el futuro Plin requiere invocar un API REST, manejar tokens o reintentos por caída de red, todo ese código técnico terminaría ensuciando la clase de pedidos.
 
-Para soportar Plin, tendríamos que agregar otro `else if (metodoPago.equals("plin"))`. Si más adelante la pasarela de Plin requiere llamadas HTTP a un API externo, manejo de tokens, reintentos o respuestas asíncronas, toda esa lógica de infraestructura y red terminaría contaminando la clase de pedidos.
+* **Solución propuesta — Polimorfismo mediante Interfaz:**
+  - *¿En qué consiste?* Creamos una interfaz `MetodoPago` con el método `procesar(monto)`. Clases como `PagoTarjeta`, `PagoYape` y `PagoPlin` implementan este contrato y ocultan sus detalles técnicos.
+  - *¿Por qué lo usamos?* Permite que `Pedido` solo invoque `metodo.procesar(total)` sin importarle si el dinero viaja por una pasarela bancaria, billetera móvil o efectivo. Para soportar Plin, basta con crear la clase `PagoPlin` (1 archivo nuevo, 0 modificados en el núcleo del sistema).
 
 ---
 
 ### 4. ¿Qué pasa si el descuento VIP cambia de 15% a 20%?
 
-Aunque parece un cambio menor (cambiar `0.85` por `0.80`), al estar incrustado como un literal numérico dentro del método, exige modificar el archivo Java, recompilar el proyecto y generar un nuevo despliegue.
+* **El problema:** El porcentaje está incrustado como un número mágico (`0.85`) dentro del flujo del método. Aunque es un ajuste de una sola línea, obliga a modificar código fuente, recompilar el proyecto, generar una nueva versión y desplegar el sistema. Además, no hay visibilidad centralizada de las políticas comerciales.
 
-No existe un lugar centralizado, entidad ni configuración independiente donde las reglas y políticas comerciales residan, lo que dificulta el rastreo y mantenimiento de las tarifas del negocio.
+* **Solución propuesta — Constantes con Nombre y Externalización de Configuración:**
+  - *¿En qué consiste?* Primero, a nivel de código, reemplazamos los números mágicos por constantes descriptivas como `FACTOR_DESCUENTO_VIP = 0.80`. Segundo, si las tasas cambian con frecuencia por promociones, ese valor se extrae a un archivo externo de propiedades (`application.properties`) o variables de entorno.
+  - *¿Por qué lo usamos?* Permite que el equipo comercial o de operaciones ajuste las tasas directamente en la configuración sin necesidad de que un programador reescriba código ni recompilar la aplicación.
 
 ---
 
 ### 5. ¿Qué pasa si el umbral de "cliente VIP" cambia según el monto? (ej. VIP solo si subtotal > S/ 500)
 
-El parámetro simple `String tipoCliente` resulta insuficiente. La lógica condicional tendría que volverse compuesta dentro del cálculo: `else if (tipoCliente.equals("vip") && subtotal > 500)`.
+* **El problema:** El parámetro primitivo `String tipoCliente` colapsa. La condición tendría que volverse compleja: `else if (tipoCliente.equals("vip") && subtotal > 500)`. La regla sobre quién califica comercialmente como cliente VIP invade y contamina la rutina de cálculo de la orden.
 
-Esto provoca que la regla sobre quién califica comercialmente como cliente VIP se filtre y disperse dentro del cálculo del pedido, en lugar de pertenecer a una entidad o servicio de evaluación de clientes independiente.
+* **Solución propuesta — Encapsulamiento en el Dominio (Modelo `Cliente`):**
+  - *¿En qué consiste?* En vez de pasar cadenas de texto sueltas (`String tipoCliente`), creamos un objeto o entidad `Cliente` que sea dueño de sus propios atributos (historial de compras, categoría, etc.) y contenga métodos como `cliente.esVip(monto)`.
+  - *¿Por qué lo usamos?* Traslada la responsabilidad al lugar correcto: saber si alguien califica como VIP le compete al módulo de clientes, no al módulo de facturación de pedidos. Si mañana la regla de calificación cambia (por ejemplo, VIP por acumulación de puntos anuales), solo cambia la clase `Cliente` y la clase `Pedido` permanece inalterada.
 
 ---
 
@@ -51,4 +61,4 @@ Esto provoca que la regla sobre quién califica comercialmente como cliente VIP 
 
 > *"Un punto de variación es una decisión de diseño que se sabe que puede cambiar. Encapsularlo significa que el cambio afecta solo al código dentro de esa frontera."* (McConnell, 2004)
 
-Encapsular ambos puntos de variación detrás de contratos estables (como interfaces) garantiza que, cuando el negocio agregue campañas o pasarelas, el impacto quede confinado a una nueva clase sin poner en riesgo el código en producción.
+Identificar y encapsular estos puntos de variación desde el inicio evita que un requerimiento habitual del negocio provoque modificaciones invasivas en el código de producción. Las soluciones aplicadas (Polimorfismo, Strategy, Configuración Externa y Encapsulamiento en el Dominio) son las que transforman un diseño rígido en un sistema preparado para sobrevivir al cambio.
